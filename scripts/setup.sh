@@ -45,28 +45,32 @@ check_dependency() {
 log_info "Checking dependencies..."
 check_dependency "sudo"
 check_dependency "wget"
-check_dependency "java"
 check_dependency "jq" # Required for parsing JSON to get the latest server jar
 
-# Detect package manager and install Java if not found
+# Detect package manager and install the default/latest Java JDK
 install_java() {
-    log_info "Java not found. Attempting to install Java 17 (LTS)..."
+    log_info "Java JDK not found. Attempting to install the default/latest version..."
     if command -v apt &> /dev/null; then
+        log_info "Detected apt (Debian/Ubuntu). Installing default-jdk..."
         sudo apt update -y
-        sudo apt install -y openjdk-17-jre-headless
+        sudo apt install -y default-jdk
     elif command -v dnf &> /dev/null; then
-        sudo dnf install -y java-17-openjdk-headless
+        log_info "Detected dnf (Fedora/RHEL). Installing java-latest-openjdk-devel..."
+        sudo dnf install -y java-latest-openjdk-devel
     elif command -v pacman &> /dev/null; then
-        sudo pacman -S --noconfirm jre17-openjdk-headless
+        log_info "Detected pacman (Arch). Installing jdk-openjdk..."
+        sudo pacman -S --noconfirm jdk-openjdk
     elif command -v yum &> /dev/null; then
-        sudo yum install -y java-17-openjdk-headless
+        log_info "Detected yum (older RHEL). Installing java-latest-openjdk-devel..."
+        sudo yum install -y java-latest-openjdk-devel
     else
-        log_error "Could not detect package manager. Please install Java 17 or higher manually and run the script again."
+        log_error "Could not detect package manager. Please install a Java JDK manually and run the script again."
     fi
 
     # Verify installation
     if java -version &> /dev/null; then
         log_info "Java installed successfully."
+        java -version
     else
         log_error "Java installation appears to have failed."
     fi
@@ -76,7 +80,7 @@ install_java() {
 if ! command -v java &> /dev/null; then
     install_java
 else
-    log_info "Java is already installed. Checking version..."
+    log_info "Java is already installed."
     java -version
 fi
 
@@ -103,6 +107,10 @@ wget -O server.jar "$JAR_URL" || log_error "Failed to download server.jar"
 log_info "Starting server for the first time to generate EULA and other files..."
 if ! java -Xms"$JAVA_MEMORY" -Xmx"$JAVA_MEMORY" -jar server.jar --nogui --initSettings > /dev/null 2>&1; then
     log_info "Expected initial startup failure (due to EULA). Proceeding..."
+fi
+
+if [[ ! -f "eula.txt" ]]; then
+    log_error "eula.txt was not generated. Something went wrong with the initial startup."
 fi
 
 log_info "Accepting the Minecraft EULA..."
