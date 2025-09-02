@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mc-server:
+    # Build the image using the Dockerfile in the current directory
+    build: .
+    container_name: minecraft-server
+    restart: unless-stopped
+    # Environment variables for configuration
+    environment:
+      - JVM_OPTS=-Xms2G -Xmx4G # Override default memory settings
+    # Port mapping: <host-port>:<container-port>
+    ports:
+      - "25565:25565"
+    # Volume to persist server data, worlds, configs, etc.
+    volumes:
+      - mc-data:/minecraft/server
+
+# Define a named volume for persistent data
+volumes:
+  mc-data:
